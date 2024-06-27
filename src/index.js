@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import app from "./app.js";
 import connectDB from "./db/index2.js";
 // this is the second approach:
 // run firstly the dotenv file import as per as possible :
@@ -10,7 +11,22 @@ dotenv.config({
   path: "./env",
 });
 
-connectDB();
+// connectDB is a async function
+connectDB()
+  .then(() => {
+    app.listen(process.env.PORT || 8080, () => {
+      console.log(`server is running at port : ${process.env.PORT}`);
+    });
+  })
+  .catch((error) => {
+    app.on("error", (error) => {
+      console.log(
+        "ERrror: sometimes our express app  will not able to connect thats why it shows an error ",
+        error
+      );
+    });
+    console.log("MONGO DB CONNECTION FAIELD !! ", error);
+  });
 
 // this is the first approach to connect with database:
 
