@@ -11,20 +11,24 @@ dotenv.config({
   path: "./env",
 });
 
+
+// sometimes express will also throw the errors
 // connectDB is a async function
 connectDB()
   .then(() => {
-    app.listen(process.env.PORT || 8080, () => {
-      console.log(`server is running at port : ${process.env.PORT}`);
-    });
-  })
-  .catch((error) => {
     app.on("error", (error) => {
       console.log(
         "ERrror: sometimes our express app  will not able to connect thats why it shows an error ",
         error
       );
+      // optinally we throwing the error to the global error handler
+      throw error;
     });
+    app.listen(process.env.PORT || 8080, () => {
+      console.log(`server is running at port : ${process.env.PORT}`);
+    });
+  })
+  .catch((error) => {
     console.log("MONGO DB CONNECTION FAIELD !! ", error);
   });
 
