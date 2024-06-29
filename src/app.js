@@ -3,8 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 //              ImPortant::
-// we use app.use when we have to work with middleware and confidential: 
-
+// we use app.use when we have to work with middleware and confidential:
 
 // most of the place we use this only :
 // app.use((cors))
@@ -14,7 +13,7 @@ const app = express();
 
 // baiscally cors works as middleware that can be used to enable cors with various options
 // he cors middleware for Express simplifies enabling and configuring CORS, allowing you to control resource sharing with fine-grained policies.
-// in this we have to define cors_origin that where from our request is come from : we define it in .env file : 
+// in this we have to define cors_origin that where from our request is come from : we define it in .env file :
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
@@ -30,5 +29,13 @@ app.use(express.static("public"));
 //
 app.use(cookieParser());
 
+// import routes in this
+
+import router from "./routes/user.routes.js";
+
+// routes declaration
+app.use("/api/v1/users", router);
+
+// http://localhost:8000/api/v1/users/register
 // we use
 export default app;
