@@ -14,6 +14,8 @@ const UploadOnCloudinary = async (filelocalPath) => {
   try {
     if (!filelocalPath) return null;
     //
+
+    // upoad the file on cloudinary:
     const response = await cloudinary.uploader.upload(filelocalPath, {
       resource_type: "auto",
     });
@@ -28,4 +30,4 @@ const UploadOnCloudinary = async (filelocalPath) => {
   }
 };
 
-export { cloudinary };
+export { UploadOnCloudinary };

@@ -31,10 +31,10 @@ app.use(cookieParser());
 
 // import routes in this
 
-import router from "./routes/user.routes.js";
-
+import useRouter from "./routes/user.routes.js";
+// we can give any name:
 // routes declaration
-app.use("/api/v1/users", router);
+app.use("/api/v1/users", useRouter);
 
 // http://localhost:8000/api/v1/users/register
 // we use
