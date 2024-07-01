@@ -11,7 +11,7 @@ const connectDB = async () => {
     console.log(
       `mongoDb connect !! DB Host:${connectionInstance.connection.host}`
     );
-    console.log(connectionInstance);
+    // console.log(connectionInstance);
   } catch (error) {
     console.log("Mongodb connection error: ", error);
     // throw and process.exit both use to teminate the code: exit code are of different type hover it or google search

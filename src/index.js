@@ -8,9 +8,8 @@ import connectDB from "./db/index2.js";
 // if we use import statement then all the things we have to do it else we can use require syntax in that we donot have to use that much
 // or if we using import statement then we have to change the script as well
 dotenv.config({
-  path: "./env",
+  path: "./.env",
 });
-
 
 // sometimes express will also throw the errors
 // connectDB is a async function

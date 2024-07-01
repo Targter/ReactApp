@@ -29,7 +29,7 @@ const registerUser = trycatchhandler(async (req, res) => {
 
   // we have request
   const { fullname, email, username, password } = req.body;
-  // console.log("Email", password);
+  console.log("Email", password);
   // validatioN
   // if (fullname === "") {
   //   throw new ApiError(400, "fullName is required");
@@ -46,7 +46,7 @@ const registerUser = trycatchhandler(async (req, res) => {
   // check if useExists or not:
 
   // here User is from user.models.js: which we import: this will contact with our database on the behalf of this we can perform find operations:
-  const existedUser = User.findOne({ $or: [{ username }, { email }] });
+  const existedUser = await User.findOne({ $or: [{ username }, { email }] });
   if (existedUser)
     throw new ApiError(409, "User with email or userName already exists");
 
@@ -54,29 +54,41 @@ const registerUser = trycatchhandler(async (req, res) => {
 
   // Handle files
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImgLocalPath = req.files?.coverImg[0]?.path;
+  console.log("requiest .com files outpput :", req.body);
+
+  // const coverImgLocalPath = req.files?.coverimg[0]?.path;
+  // if we are not sending the coverimg it shows me an error -> because of the above url so to fix the code we have to cheeck
+
+  let coverImgLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverimg) &&
+    req.files.coverimg.length > 0
+  ) {
+    coverImgLocalPath = req.files.coverimg[0].path;
+  }
 
   if (!avatarLocalPath) throw new ApiError(400, "Avatar files are required:");
 
   //create database entry: upload them to cloudinarY:
 
   const avatar = await UploadOnCloudinary(avatarLocalPath);
-  const coverImage = await UploadOnCloudinary(coverImgLocalPath);
+  const coverImg = await UploadOnCloudinary(coverImgLocalPath);
 
   if (!avatar) throw new ApiError(400, "Avatar is required");
 
   // object and entry in database:
-  User.create({
+  const user = await User.create({
     fullname,
     avatar: avatar.url,
-    coverImage: coverImage?.url || " ",
+    coverimg: coverImg?.url || "",
     email,
     username: username.toLowerCase(),
     password,
   });
 
   // check user Is there or Not
-  const createdUser = User.findById(user._id).select(
+  const createdUser = await User.findById(user._id).select(
     " -password -refreshToken "
   );
 
