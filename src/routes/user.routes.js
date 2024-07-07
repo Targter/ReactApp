@@ -6,6 +6,13 @@ import {
   logoutUser,
   refreshAccessToken,
   registerUser,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImg,
+  getUserChannelProfile,
+  getWatchHistory,
 } from "../controllers/user.controller.js";
 
 // middle ware of multer
@@ -31,4 +38,27 @@ router.route("/logOut").post(verifyJWT, logoutUser);
 
 // this is too hit the end point to regenerate the AccessToken
 router.route("/refresh-token").post(refreshAccessToken);
+
+//
+router.route("/changePassword").post(verifyJWT, changeCurrentPassword);
+// getCurrentUser
+router.route("/currentUser").post(verifyJWT, getCurrentUser);
+//in this i use Patch to modify value to the resource
+router.route("/updateDetails").patch(verifyJWT, updateAccountDetails);
+// update
+router
+  .route("/avatar")
+  .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+
+// coverImg
+router
+  .route("/coverImg")
+  .patch(verifyJWT, upload.single("coverimg"), updateUserCoverImg);
+
+// update this is because i have to fetch data from the params:
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+// get watch history:
+router.route("/history").get(verifyJWT, getWatchHistory);
+
+//
 export default router;

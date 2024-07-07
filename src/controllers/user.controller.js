@@ -1,9 +1,9 @@
+import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import ApiError from "../utils/apiError.js";
 import { trycatchhandler } from "../utils/asyncHandler.js";
 import { UploadOnCloudinary } from "../utils/cloudinary.js";
-
 import jwt from "jsonwebtoken";
 // with the use of helper file :from this we have a try catch
 
@@ -81,7 +81,7 @@ const registerUser = trycatchhandler(async (req, res) => {
 
   // Handle files
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  console.log("requiest .com files outpput :", req.body);
+  // console.log("requiest .com files outpput :", req.body);
 
   // const coverImgLocalPath = req.files?.coverimg[0]?.path;
   // if we are not sending the coverimg it shows me an error -> because of the above url so to fix the code we have to cheeck
@@ -280,4 +280,264 @@ const refreshAccessToken = trycatchhandler(async (req, res) => {
       new ApiResponse(200, AccessToken, RefreshToken, "AccesToken Refreshed")
     );
 });
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+const changeCurrentPassword = trycatchhandler(async (req, res) => {
+  // console.log("requersuer checking", req.user);
+  // console.log("userBody", req.user);
+  // in this i have to check the oldPassword: and we know if we are able to change the password:
+  // console.log()
+  //i have to chagne the current password i can take the userId by passing it by the auth middle ware and take the data from the cookie: which gives me the req.uesr
+  //
+  const { oldPassword, newPassword } = req.body;
+  const user = await User.findById(req.user?._id);
+
+  // i am already makign a function to check the password:
+
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordCorrect) throw new ApiError(400, "Invalid Old Password");
+
+  //
+  user.password = newPassword;
+
+  // if password will change our function automatically bcrypt it because we make it hook run always wheen pasword will change:
+  // we donot want to run other validation:
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password change succesfullY"));
+});
+
+//
+const getCurrentUser = trycatchhandler(async (req, res) => {
+  return res.status(200).json(200, req.user, "current user Fetch Sucessfully");
+});
+
+//
+const updateAccountDetails = trycatchhandler(async (req, res) => {
+  const { fullname, email } = req.body;
+  if (!fullname || !email) throw new ApiError(400, "All field are required");
+  // new:true will return the updated information
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullname,
+        email,
+      },
+    },
+    { new: true }
+  ).select(" -password");
+
+  //
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account Details Updated Succesfully"));
+});
+
+// to change the avatar:
+// in this we use the two middleware
+
+const updateUserAvatar = trycatchhandler(async (req, res) => {
+  // this will get from multer middleware:
+  // fiels for multiple and file for single:
+  const avatarLocalPath = req.file?.path;
+  if (!avatarLocalPath) new ApiError(400, "Avatar file is missing");
+
+  const avatar = await UploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar.url) throw new ApiError(400, "Error while uplaoding on avatar: ");
+
+  // update the avatar:
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { avatar: avatar.url } },
+    { new: true }
+  ).select(" -password");
+
+  //
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar updated succesfully"));
+});
+
+//
+
+const updateUserCoverImg = trycatchhandler(async (req, res) => {
+  // this will get from multer middleware:
+  // fiels for multiple and file for single:
+  const coverImgLocalPath = req.file?.path;
+  if (!coverImgLocalPath) new ApiError(400, "cover img file is missing");
+
+  const coverImage = await UploadOnCloudinary(coverImgLocalPath);
+
+  if (!coverImage.url)
+    throw new ApiError(400, "Error while uplaoding on avatar: ");
+
+  // update the avatar:
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { coverimg: coverImage.url } },
+    { new: true }
+  ).select(" -password");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "coverImg updated succesfully"));
+});
+
+// Start the use of Aggregation Pipeline:
+const getUserChannelProfile = trycatchhandler(async (req, res) => {
+  // get the user so it will come from params; means url
+  const { username } = req.params;
+  if (!username?.trim()) throw new ApiError(401, "UserName is Missing: ");
+
+  // we can find : username from the document by : User.find({username}) but we can use directly aggregation pipleline which automatically take the
+
+  const channel = await User.aggregate([
+    {
+      // match field is to find the match from the database:
+      // $match Filters the documents to pass only the documents that match the specified condition(s) to the next pipeline stage.
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+    // we know that all field in the model will in lowercase with s in their name:
+    // it give the total subscriber of you channel
+
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    // to find the total subscribed channel:
+    // foreign field is subscriber we have to find my id in the channels
+    // we found the total subscribered channel through other channel and find my id: thats why i search for subscriber:
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    // to add the totalfield:
+    {
+      $addFields: {
+        subsribersCount: {
+          $size: "$subscribers",
+        },
+        channelSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        // this field is for is user subscried the channel or not : if true else false:
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+
+    // this will see what we have to pass to the user:
+    {
+      $project: {
+        fullname: 1,
+        username: 1,
+        subsribersCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverimg: 1,
+        email: 1,
+      },
+    },
+
+    // channel have total subscribers
+
+    // console.log(channel),
+    // what type of aggregate return : array:
+  ]);
+  if (!channel?.length) throw new ApiError(404, "Channel doesnot Exist");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], "User channel Fetched sucessfullyf")
+    );
+});
+
+// get Watch History:
+const getWatchHistory = trycatchhandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      // mongodb: when we give the userId to the mongoose it automatically convert it into the mongooseObject Id but mongodb gives userId in string format:
+      // but in this case we have to find the use > till now we pass the string directly mongodb will handle it:
+      // but in thsi we have to convert the userId because aggregate is the concept of mongodb this will nto handle it:
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    // from in short form : with s in their name;
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "WatchHistory",
+        // subpipline to find the watch history and owner details:
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullname: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  // return
+
+  return res
+    .status(200)
+    .json(200, user[0].WatchHistory, "This is the watch History DAta");
+});
+export {
+  registerUser,
+  loginUser,
+  getUserChannelProfile,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserCoverImg,
+  updateUserAvatar,
+  getWatchHistory,
+};

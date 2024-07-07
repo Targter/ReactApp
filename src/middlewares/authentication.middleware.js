@@ -29,7 +29,7 @@ export const verifyJWT = trycatchhandler(async (req, res, next) => {
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
     // console.log(decodedToken);
-    // _id we make while making the method:
+    // _id we make while making the method: in this decodeToken have the id : which contain the reqData:
     const user = await User.findById(decodedToken?._id).select(
       " -password -refreshToken"
     );
